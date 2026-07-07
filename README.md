@@ -284,7 +284,7 @@ sklearn 1.4+ removed `cv='prefit'` as a valid string parameter. We implement Pla
 - [x] XGBoost production model (AUC: 0.691, Accuracy: 58%)
 - [x] SHAP explainability — per-prediction feature contributions
 - [x] Platt scaling probability calibration
-- [ ] Walk-forward backtesting — Sharpe ratio, max drawdown
+- [x] Walk-forward backtesting — Sharpe ratio, max drawdown
 - [ ] News sentiment — FinBERT scoring + rolling aggregation
 - [ ] LLM explanation layer — Claude API with structured prompts
 - [ ] RAG knowledge base — grounded investing Q&A
