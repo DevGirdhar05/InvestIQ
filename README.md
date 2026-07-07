@@ -8,11 +8,14 @@
 
 InvestIQ analyses NSE-listed stocks to help beginner investors understand what is happening in a stock before making a decision:
 
-- Computes 15+ technical indicators from scratch — RSI, MACD, Bollinger Bands, ATR, Moving Averages
-- Generates plain-English signal summaries showing overbought/oversold conditions, trend direction, and volatility regime
-- Predicts probability of price rise using XGBoost trained on historical indicator data
-- Explains every prediction in plain English using an LLM, grounded in a curated investing knowledge base via RAG
-- Serves everything through a FastAPI backend with a React dashboard
+- Computes 13 technical indicators from scratch — RSI, MACD, Bollinger Bands, ATR, Moving Averages
+- Predicts probability of price rise using XGBoost trained on historical indicator data (AUC: 0.69)
+- Explains every prediction using SHAP values — shows which indicators drove the signal and why
+- Calibrates raw model scores to true probabilities using Platt scaling
+- Generates plain-English signal summaries for beginner investors
+- *(Coming soon)* LLM explanation layer — converts SHAP output to plain English via Claude API
+- *(Coming soon)* News sentiment — FinBERT scoring of financial headlines as an ML feature
+- *(Coming soon)* FastAPI backend + React dashboard with probability gauge
 
 ---
 
@@ -20,12 +23,26 @@ InvestIQ analyses NSE-listed stocks to help beginner investors understand what i
 
 > Live deployment coming soon.
 
-**Sample signal output — RELIANCE.NS:**
+**Sample prediction output — RELIANCE.NS:**
+
+```
+Date             : 2026-07-03
+Prediction       : P(UP in 10 days) = 62.4%  |  Confidence: MEDIUM
+
+Top contributing signals:
+  sma_50           ▲ bullish    +0.18   (price approaching SMA50)
+  macd_hist        ▲ bullish    +0.14   (histogram turning positive)
+  price_vs_sma50   ▼ bearish    -0.09   (still below 50-day average)
+  bb_pct           ▲ bullish    +0.07   (price near lower band)
+  rsi_normalized   ▲ bullish    +0.05   (RSI below 50, oversold bias)
+```
+
+**Signal card — all indicators at a glance:**
 
 ```
 Close Price  : ₹1,304.00
 RSI (14)     : 46.3    — Neutral zone
-MACD         : Bullish crossover — momentum accelerating  
+MACD         : Bullish crossover — momentum accelerating
 Trend        : Downtrend (price -2.6% below SMA50)
 Bollinger %B : 0.52    — Near middle of bands
 ATR          : ₹18.80  — 1.44% expected daily move
@@ -39,45 +56,37 @@ Overall Bias : BULLISH (3 bullish / 1 bearish signals)
 ```
 ┌─────────────────────────────────────────────────────┐
 │  Data Sources                                        │
-│  yfinance (OHLCV)          NewsAPI (headlines)       │
+│  yfinance (OHLCV daily)     NewsAPI (headlines)      │
 └────────────────┬────────────────┬───────────────────┘
                  │                │
                  ▼                ▼
 ┌─────────────────────────────────────────────────────┐
 │  Storage                                             │
-│  PostgreSQL (prices, indicators, sentiment)          │
-│  Redis (15-min response cache)                       │
+│  PostgreSQL — prices, indicators, sentiment          │
+│  Redis — 15-min API response cache                   │
 └────────────────────────┬────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────┐
 │  ML Layer                                            │
-│  Feature engineering (17 indicators)                 │
+│  13 technical indicator features                     │
 │  XGBoost classifier → calibrated P(up/down)          │
-│  FinBERT sentiment scoring                           │
+│  SHAP values → per-prediction feature attribution    │
+│  FinBERT sentiment scoring (coming soon)             │
 └────────────────────────┬────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────┐
-│  AI Layer                                            │
-│  LLM API — plain-English explanations                │
+│  AI Layer (coming soon)                              │
+│  Claude API — plain-English SHAP explanations        │
 │  RAG (Pinecone) — grounded investing Q&A             │
 └────────────────────────┬────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────┐
-│  API Layer                                           │
-│  FastAPI — /analyze  /explain  /sentiment  /ask      │
-│  Celery workers — daily data fetch + model retrain   │
-└────────────────────────┬────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────┐
-│  Frontend                                            │
-│  React + Recharts — price chart + indicator overlays │
-│  Probability gauge — P(up) with confidence level     │
-│  LLM explanation panel — streamed plain-English text  │
-│  News sentiment feed                                 │
+│  API + Frontend (coming soon)                        │
+│  FastAPI — /analyze /explain /sentiment /ask         │
+│  React + Recharts — chart, probability gauge, news   │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -101,18 +110,27 @@ investiq/
 │   │   ├── atr.py              # Average True Range
 │   │   └── pipeline.py         # compute_all_indicators()
 │   │
-│   ├── models/                 # XGBoost, SHAP, calibration
-│   ├── sentiment/              # FinBERT news sentiment
-│   └── api/                    # FastAPI routes
+│   ├── models/
+│   │   ├── features.py         # build_dataset(), time_series_split()
+│   │   ├── logistic_model.py   # baseline classifier
+│   │   └── xgboost_model.py    # production model + SHAP + calibration
+│   │
+│   ├── sentiment/              # FinBERT news sentiment (coming soon)
+│   └── api/                    # FastAPI routes (coming soon)
 │
-├── notebooks/                  # Exploration and analysis
+├── notebooks/
+│   ├── 01_explore.ipynb        # yfinance, normalisation
+│   ├── 02_indicators.ipynb     # indicator analysis, signal card
+│   ├── 03_pipeline_test.ipynb  # DB verification, market overview
+│   ├── 04_first_model.ipynb    # logistic regression baseline
+│   └── 05_xgboost.ipynb        # XGBoost, SHAP, calibration
+│
 ├── data/
-│   ├── raw/                    # Downloaded CSV files
-│   └── charts/                 # Saved charts
-├── models/                     # Saved model files (.pkl)
+│   ├── raw/                    # Downloaded CSV files (not committed)
+│   └── charts/                 # Saved charts (not committed)
+├── models/                     # Saved .pkl files (not committed)
 ├── .env                        # DB credentials (not committed)
-├── requirements.txt
-└── README.md
+└── requirements.txt
 ```
 
 ---
@@ -122,37 +140,57 @@ investiq/
 | Layer | Technology | Why |
 |---|---|---|
 | Data | yfinance | Free NSE/BSE/US OHLCV data |
-| Database | PostgreSQL + SQLAlchemy | Concurrent writes, proper types, connection pooling |
-| Indicators | NumPy + pandas | All built from scratch — no black-box libraries |
-| ML model | XGBoost + scikit-learn | Best-in-class for tabular data, fast retraining |
-| Explainability | SHAP | Feature contribution per prediction, not just global importance |
-| Sentiment | FinBERT (HuggingFace) | Financial domain vocabulary — understands "crashed through resistance" |
-| LLM | Anthropic Claude API | Plain-English explanations grounded in retrieved context |
-| RAG | LangChain + Pinecone | Prevents hallucination, cites sources |
-| Backend | FastAPI + Celery + Redis | Async, background jobs, response caching |
-| Frontend | React + Recharts | Interactive charts, probability gauge |
-| Deployment | Docker + Railway + Vercel | One-command local setup, cloud hosting |
+| Database | PostgreSQL + SQLAlchemy | Concurrent writes, connection pooling, proper types |
+| Indicators | NumPy + pandas | All built from scratch — no TA-Lib black box |
+| ML model | XGBoost | Best-in-class for tabular data, fast retraining |
+| Explainability | SHAP | Per-prediction feature attribution with direction |
+| Calibration | Platt scaling | Converts raw scores to true probabilities |
+| Sentiment | FinBERT (coming soon) | Financial domain vocabulary awareness |
+| LLM | Claude API (coming soon) | Plain-English SHAP explanations |
+| RAG | LangChain + Pinecone (coming soon) | Grounded investing Q&A |
+| Backend | FastAPI + Redis + Celery (coming soon) | Async API, caching, background jobs |
+| Frontend | React + Recharts (coming soon) | Interactive chart, probability gauge |
+| Deployment | Docker + Railway + Vercel (coming soon) | One-command setup, cloud hosting |
+
+---
+
+## Model performance
+
+| Model | Horizon | Test AUC | Test Accuracy | Notes |
+|---|---|---|---|---|
+| Always-UP baseline | 10d | 0.500 | 34.1% | Test period was bearish |
+| Logistic Regression | 10d | 0.693 | 55.1% | Strong linear baseline |
+| **XGBoost** | **10d** | **0.691** | **58.0%** | **Production model** |
+
+Horizon=10 days was selected empirically from a sweep of 1, 3, 5, and 10 day windows. AUC of 0.69 is near the upper bound achievable from technical indicators alone on daily OHLCV data.
+
+**Top SHAP features (mean absolute contribution):**
+
+| Feature | Importance | Interpretation |
+|---|---|---|
+| sma_50 | 1.435 | Medium-term trend direction is the dominant signal |
+| macd_hist | 1.075 | Momentum acceleration second most important |
+| macd_signal | 0.685 | Trend confirmation layer |
+| price_vs_sma50 | 0.509 | Distance from average — mean reversion signal |
+| bb_pct | 0.300 | Volatility-adjusted price position |
 
 ---
 
 ## Indicators
 
-All indicators are implemented from scratch. No TA-Lib dependency.
+All indicators implemented from scratch. No TA-Lib dependency.
 
-| Indicator | Formula | What it signals |
+| Indicator | Formula | Signal |
 |---|---|---|
-| SMA 20 / 50 | `rolling(N).mean()` | Short and medium-term trend |
+| SMA 20 / 50 | `rolling(N).mean()` | Golden Cross / Death Cross |
 | EMA 20 | `ewm(span=N, adjust=False).mean()` | Trend with recency bias |
-| Golden / Death Cross | SMA20 vs SMA50 crossover | Trend reversal |
-| RSI (14) | `100 - 100 / (1 + avg_gain/avg_loss)` | Overbought > 70, oversold < 30 |
+| RSI (14) | `100 - 100/(1 + avg_gain/avg_loss)` | Overbought > 70, oversold < 30 |
 | MACD | `EMA(12) - EMA(26)` | Momentum direction |
 | MACD Histogram | `MACD - Signal(9)` | Momentum acceleration |
 | Bollinger Bands | `SMA ± 2 × StdDev(20)` | Volatility and price extremes |
 | BB %B | `(price - lower) / (upper - lower)` | Position within the band |
-| BB Width | `(upper - lower) / middle` | Squeeze detection |
-| Volume Ratio | `volume / rolling_mean(volume, 20)` | Institutional activity |
-| ATR (14) | `EMA(TrueRange, 14)` | Expected daily move in ₹ |
-| ATR % | `ATR / close × 100` | Normalised daily volatility |
+| ATR (14) | `EMA(True Range, 14)` | Expected daily move in ₹ |
+| Volume Ratio | `volume / rolling_mean(20)` | Unusual institutional activity |
 
 ---
 
@@ -185,7 +223,6 @@ sudo apt install postgresql -y && sudo service postgresql start
 ```
 
 ```sql
--- Run inside psql
 CREATE DATABASE investiq;
 CREATE USER investiq_user WITH PASSWORD 'investiq123';
 GRANT ALL PRIVILEGES ON DATABASE investiq TO investiq_user;
@@ -207,57 +244,62 @@ DB_PASSWORD=investiq123
 ### Run
 
 ```bash
-# Download data and populate the database
+# Populate the database (first time)
 python src/data/pipeline.py
 
-# Generate today's signal card for any ticker
-cd notebooks && python 02_indicators.py
+# Train the model
+jupyter notebook notebooks/05_xgboost.ipynb
+
+# Verify signal output for any ticker
+jupyter notebook notebooks/02_indicators.ipynb
 ```
 
 ---
 
 ## Design decisions
 
-**Direction prediction, not price prediction**
-Predicting exact price is a regression problem with enormous irreducible noise — even the best models have poor MSE. Direction prediction (will price be higher in 5 days?) is a classification problem where 55% accuracy is genuinely useful. Calibrated probabilities — "68% chance of rising" — are more honest and actionable than a specific price target.
+**Why predict direction and not price?**
+Price prediction is regression with enormous irreducible noise. Direction prediction (will price be higher in 10 days?) is classification where 58% accuracy is genuinely useful. Calibrated probabilities — shown as "62% chance of rising" — are more honest and actionable than a specific price target.
 
-**XGBoost over LSTM**
-Technical indicators reduce price sequences to a flat feature vector — a tabular row, not a sequence. XGBoost is best-in-class for tabular data and trains in under a second for daily retraining. SHAP values give full per-prediction explainability, which is essential for a platform whose core value is explaining signals to beginners. An LSTM would be a black box with slower training and higher overfitting risk on this dataset size.
+**Why XGBoost over LSTM?**
+Technical indicators reduce price sequences to a flat 13-feature vector per day — a tabular row, not a sequence. XGBoost is best-in-class for tabular data. SHAP values give full per-prediction explainability, which is essential for a platform whose core value is explaining signals to beginners. An LSTM would be a black box with slower training and higher overfitting risk on 350 training samples.
 
-**Indicators from scratch**
-Every indicator is implemented with documented math — no TA-Lib dependency. This means the codebase is fully auditable, bugs are catchable, and any formula can be modified (e.g. changing the RSI period or True Range definition). It also means the math can be explained cold in any technical interview.
+**Why indicators from scratch?**
+Every formula is documented with the math. No TA-Lib black box. Bugs are catchable. Any formula can be modified. The implementation can be explained line by line in any technical interview.
 
-**PostgreSQL from day one**
-SQLite fails under concurrent writes — FastAPI's multiple worker processes cause "database is locked" errors. PostgreSQL handles true concurrent writes with row-level locking. The abstraction layer (`load_features()`, `save_prices()`) means the ML and API code never imported a database driver directly — the entire storage layer swapped from SQLite to PostgreSQL by changing one file.
+**Why separate prices and indicators tables?**
+Adding a new indicator only requires recomputing the indicators table — no re-downloading of price history. Different update frequencies: prices update daily, indicator formulas change when we improve the model.
 
-**Separate prices and indicators tables**
-Raw data (prices) and derived data (indicators) are stored separately. Adding a new indicator means recomputing the indicators table without re-downloading two years of price data. This separation also makes it easy to backfill indicators for new tickers without touching the price pipeline.
+**Why Platt scaling instead of sklearn CalibratedClassifierCV?**
+sklearn 1.4+ removed `cv='prefit'` as a valid string parameter. We implement Platt scaling manually: fit a logistic regression on raw XGBoost scores using a held-out calibration set. This is identical to what sklearn did internally and works across all sklearn versions.
 
 ---
 
 ## Roadmap
 
 - [x] Data ingestion — yfinance + PostgreSQL pipeline
-- [x] Technical indicator engine — 12 indicators from scratch  
+- [x] Technical indicator engine — 13 indicators from scratch
 - [x] Signal summary card with plain-English interpretation
-- [ ] ML model — XGBoost with walk-forward backtesting
-- [ ] SHAP explainability — per-prediction feature contributions
+- [x] Logistic regression baseline (AUC: 0.693)
+- [x] XGBoost production model (AUC: 0.691, Accuracy: 58%)
+- [x] SHAP explainability — per-prediction feature contributions
+- [x] Platt scaling probability calibration
+- [ ] Walk-forward backtesting — Sharpe ratio, max drawdown
 - [ ] News sentiment — FinBERT scoring + rolling aggregation
 - [ ] LLM explanation layer — Claude API with structured prompts
 - [ ] RAG knowledge base — grounded investing Q&A
 - [ ] FastAPI backend — REST API with Redis caching
-- [ ] Celery jobs — daily data fetch + nightly model retrain
+- [ ] Celery workers — daily data fetch + nightly model retrain
 - [ ] React dashboard — interactive chart + probability gauge
-- [ ] Docker containerisation — one-command local setup
-- [ ] Cloud deployment — Railway (backend) + Vercel (frontend)
+- [ ] Docker containerisation
+- [ ] Cloud deployment — Railway + Vercel
 
 ---
 
 ## Author
 
-**Dev** — B.Tech Computer Science, Delhi Technological University
-
-Built as the centrepiece of my internship portfolio.
+**Dev** — B.Tech Computer Science, Delhi Technological University (3rd year)
+.
 
 ---
 
