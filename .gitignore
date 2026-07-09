@@ -1,7 +1,40 @@
-".env" 
-"*.pkl" 
-"__pycache__/" 
-".DS_Store" 
+# Environment
+.env
 venv/
-data/raw/
+.venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Models
+*.pkl
+
+# Hugging Face cache
+models/finbert_cache/
+*.bin
+*.safetensors
+.cache/
+huggingface/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
 *.db
+
+# Data (if generated locally)
+data/raw/
+
+# Logs
+*.log

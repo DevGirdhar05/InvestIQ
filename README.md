@@ -13,8 +13,8 @@ InvestIQ analyses NSE-listed stocks to help beginner investors understand what i
 - Explains every prediction using SHAP values — shows which indicators drove the signal and why
 - Calibrates raw model scores to true probabilities using Platt scaling
 - Generates plain-English signal summaries for beginner investors
-- *(Coming soon)* LLM explanation layer — converts SHAP output to plain English via Claude API
-- *(Coming soon)* News sentiment — FinBERT scoring of financial headlines as an ML feature
+- LLM explanation layer — converts SHAP output to plain English via Claude API
+- News sentiment — FinBERT scoring of financial headlines as an ML feature
 - *(Coming soon)* FastAPI backend + React dashboard with probability gauge
 
 ---
@@ -285,8 +285,8 @@ sklearn 1.4+ removed `cv='prefit'` as a valid string parameter. We implement Pla
 - [x] SHAP explainability — per-prediction feature contributions
 - [x] Platt scaling probability calibration
 - [x] Walk-forward backtesting — Sharpe ratio, max drawdown
-- [ ] News sentiment — FinBERT scoring + rolling aggregation
-- [ ] LLM explanation layer — Claude API with structured prompts
+- [x] News sentiment — FinBERT scoring + rolling aggregation
+- [x] LLM explanation layer — Claude API with structured prompts
 - [ ] RAG knowledge base — grounded investing Q&A
 - [ ] FastAPI backend — REST API with Redis caching
 - [ ] Celery workers — daily data fetch + nightly model retrain
