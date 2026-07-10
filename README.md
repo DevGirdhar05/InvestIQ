@@ -287,8 +287,8 @@ sklearn 1.4+ removed `cv='prefit'` as a valid string parameter. We implement Pla
 - [x] Walk-forward backtesting — Sharpe ratio, max drawdown
 - [x] News sentiment — FinBERT scoring + rolling aggregation
 - [x] LLM explanation layer — Claude API with structured prompts
-- [ ] RAG knowledge base — grounded investing Q&A
-- [ ] FastAPI backend — REST API with Redis caching
+- [x] RAG knowledge base — grounded investing Q&A
+- [x] FastAPI backend — REST API with Redis caching
 - [ ] Celery workers — daily data fetch + nightly model retrain
 - [ ] React dashboard — interactive chart + probability gauge
 - [ ] Docker containerisation
