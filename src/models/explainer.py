@@ -266,10 +266,8 @@ def generate_explanation(
     top_features: list,
     horizon     : int = 10
 ) -> str:
-    import time
 
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
+    if client is None:
         return _template_explanation(
             company_name, prob_up, confidence, top_features
         )
@@ -279,12 +277,50 @@ def generate_explanation(
         prob_up, confidence, top_features, horizon
     )
 
-    # Retry up to 3 times on rate limit errors
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model   = "gemini-3.1-flash-lite",
+                contents= prompt,
+                config  = types.GenerateContentConfig(
+                    max_output_tokens = 800,
+                    temperature       = 0.3
+                )
+            )
+            return response.text.strip()
+
+        except Exception as e:
+            error_str = str(e)
+            if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                wait = 60 * (attempt + 1)
+                print(f"  Rate limit — waiting {wait}s...")
+                time.sleep(wait)
+                continue
+            elif "503" in error_str or "UNAVAILABLE" in error_str:
+                wait = 15 * (attempt + 1)
+                print(f"  Server busy — waiting {wait}s...")
+                time.sleep(wait)
+                continue
+            elif "404" in error_str or "NOT_FOUND" in error_str:
+                print(f"  Model not found — trying gemini-3.1-flash...")
+                try:
+                    response = client.models.generate_content(
+                        model   = "gemini-3.1-flash",
+                        contents= prompt,
+                        config  = types.GenerateContentConfig(
+                            max_output_tokens=800,
+                            temperature=0.3
+                        )
+                    )
+                    return response.text.strip()
+                except Exception:
+                    break
+            else:
+                print(f"  Gemini error: {e}")
+                break
+
     return _template_explanation(
-    company_name,
-    prob_up,
-    confidence,
-    top_features
+        company_name, prob_up, confidence, top_features
     )
 def _template_explanation(
     company_name: str,

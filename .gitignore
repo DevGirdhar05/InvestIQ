@@ -8,6 +8,7 @@ env/
 __pycache__/
 *.py[cod]
 *.pyo
+*.pyc
 
 # Models
 *.pkl
@@ -38,3 +39,9 @@ data/raw/
 
 # Logs
 *.log
+
+*.bin
+
+__pycache__/
+
+.virtual_documents/

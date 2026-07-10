@@ -110,7 +110,23 @@ def initialise_database():
             CREATE INDEX IF NOT EXISTS idx_indicators_ticker_date
             ON indicators (ticker, date DESC)
         """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS sentiment (
+                ticker              VARCHAR(20)      NOT NULL,
+                date                DATE             NOT NULL,
+                sentiment_1d        DOUBLE PRECISION,
+                sentiment_3d        DOUBLE PRECISION,
+                sentiment_7d        DOUBLE PRECISION,
+                sentiment_momentum  DOUBLE PRECISION,
+                article_count       INTEGER,
+                PRIMARY KEY (ticker, date)
+            )
+        """))
 
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_sentiment_ticker_date
+            ON sentiment (ticker, date DESC)
+        """))
     print("Database initialised.")
     print(f"  Host: {os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}")
     print(f"  DB  : {os.getenv('DB_NAME')}")
@@ -316,4 +332,80 @@ def get_latest_signals(tickers: list) -> pd.DataFrame:
             print(f"  Warning: could not fetch signals for {ticker}: {e}")
 
     return pd.DataFrame(rows)
+
+def save_sentiment(ticker: str, features_df: pd.DataFrame):
+    """Save daily sentiment features to the sentiment table."""
+    import math
+
+    def safe_float(val):
+        """Convert to float, return None if NaN — PostgreSQL stores NULL."""
+        try:
+            f = float(val)
+            return None if math.isnan(f) else f
+        except (TypeError, ValueError):
+            return None
+
+    with get_connection() as conn:
+        for date, row in features_df.iterrows():
+            conn.execute(text("""
+                INSERT INTO sentiment
+                    (ticker, date, sentiment_1d, sentiment_3d,
+                     sentiment_7d, sentiment_momentum)
+                VALUES
+                    (:ticker, :date, :s1d, :s3d, :s7d, :smom)
+                ON CONFLICT (ticker, date) DO UPDATE SET
+                    sentiment_1d       = EXCLUDED.sentiment_1d,
+                    sentiment_3d       = EXCLUDED.sentiment_3d,
+                    sentiment_7d       = EXCLUDED.sentiment_7d,
+                    sentiment_momentum = EXCLUDED.sentiment_momentum
+            """), {
+                "ticker": ticker,
+                "date"  : date.strftime("%Y-%m-%d"),
+                "s1d"   : safe_float(row.get("sentiment_1d")),
+                "s3d"   : safe_float(row.get("sentiment_3d")),
+                "s7d"   : safe_float(row.get("sentiment_7d")),
+                "smom"  : safe_float(row.get("sentiment_momentum")),
+            })
+    print(f"  Saved sentiment for {ticker}")
+
+    
+def load_features_with_sentiment(
+    ticker: str,
+    start : str = None
+) -> pd.DataFrame:
+    """
+    Load prices + indicators + sentiment — full feature set.
+    Uses LEFT JOIN so rows without sentiment get 0 (not dropped).
+    COALESCE fills NULL with 0 when no news existed for that day.
+    This replaces load_features() for the enhanced model.
+    """
+    query = """
+        SELECT
+            p.date, p.close,
+            i.sma_20, i.sma_50, i.ema_20,
+            i.rsi, i.macd, i.macd_signal, i.macd_hist,
+            i.bb_upper, i.bb_lower, i.bb_width, i.bb_pct,
+            i.volume_ratio,
+            COALESCE(s.sentiment_1d,       0) AS sentiment_1d,
+            COALESCE(s.sentiment_3d,       0) AS sentiment_3d,
+            COALESCE(s.sentiment_7d,       0) AS sentiment_7d,
+            COALESCE(s.sentiment_momentum, 0) AS sentiment_momentum
+        FROM prices p
+        JOIN indicators i
+            ON p.ticker = i.ticker AND p.date = i.date
+        LEFT JOIN sentiment s
+            ON p.ticker = s.ticker AND p.date = s.date
+        WHERE p.ticker = :ticker
+    """
+    params = {"ticker": ticker}
+    if start:
+        query += " AND p.date >= :start"
+        params["start"] = start
+    query += " ORDER BY p.date ASC"
+
+    with get_connection() as conn:
+        df = pd.read_sql_query(text(query), conn, params=params)
+
+    df["date"] = pd.to_datetime(df["date"])
+    return df.set_index("date")
     
