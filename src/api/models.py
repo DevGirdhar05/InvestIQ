@@ -68,6 +68,7 @@ class HealthResponse(BaseModel):
     status  : str
     database: str
     model   : str
+    cache   : Optional[dict] = None
     version : str = "1.0.0"
 
 

@@ -4,10 +4,11 @@ from src.api.dependencies import get_model_and_explainer
 from src.models.features import build_dataset, time_series_split
 from src.models.xgboost_model import get_prediction_explanation
 from src.data.database import (
-    load_features_with_sentiment, get_connection
+    load_features, get_connection
 )
 from sqlalchemy import text
 import pandas as pd
+from src.api.cache import cache_get, cache_set, TTL_ANALYSIS
 
 router = APIRouter(prefix="/analyze", tags=["Analysis"])
 
@@ -40,11 +41,7 @@ def get_company_name(ticker: str) -> str:
 
 
 def build_features_for_ticker(ticker: str):
-    """
-    Build feature dataset for prediction.
-    Uses load_features_with_sentiment for 17-feature set.
-    """
-    df = load_features_with_sentiment(ticker)
+    df = load_features(ticker)   # 13 features only
 
     future_close  = df["close"].shift(-HORIZON)
     future_return = (future_close - df["close"]) / df["close"]
@@ -58,9 +55,7 @@ def build_features_for_ticker(ticker: str):
         "rsi", "macd", "macd_signal", "macd_hist",
         "bb_pct", "bb_width", "sma_20", "sma_50",
         "ema_20", "volume_ratio",
-        "price_vs_sma20", "price_vs_sma50", "rsi_normalized",
-        "sentiment_1d", "sentiment_3d",
-        "sentiment_7d", "sentiment_momentum"
+        "price_vs_sma20", "price_vs_sma50", "rsi_normalized"
     ]
 
     X = df[feature_cols].copy()
@@ -70,57 +65,48 @@ def build_features_for_ticker(ticker: str):
     valid = X.notna().all(axis=1) & y.notna()
     return X[valid], y[valid]
 
+    
+
 
 @router.get("/{ticker}", response_model=AnalysisResponse)
 async def analyze_ticker(ticker: str):
-    """
-    Get ML prediction for a ticker.
-
-    Returns probability of price rise in 10 trading days,
-    confidence level, and top SHAP feature contributions.
-
-    Ticker format:
-    - NSE stocks: RELIANCE.NS, TCS.NS
-    - BSE stocks: RELIANCE.BO
-    - US stocks: AAPL, TSLA
-    """
     ticker = ticker.upper()
 
     if ticker not in WATCHLIST:
         raise HTTPException(
             status_code=404,
-            detail=f"Ticker {ticker} not in watchlist. "
-                   f"Available: {WATCHLIST}"
+            detail=f"Ticker {ticker} not in watchlist."
         )
 
+    # ── Check cache first ─────────────────────────────────────
+    cache_key    = f"analyze:{ticker}"
+    cached_result= cache_get(cache_key)
+
+    if cached_result:
+        # Cache hit — return immediately, no computation
+        return AnalysisResponse(**cached_result)
+
+    # ── Cache miss — run full analysis ────────────────────────
     try:
-        # Build features
         X, y = build_features_for_ticker(ticker)
 
         if len(X) < 100:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Insufficient data for {ticker}. "
-                       f"Need at least 100 samples."
-            )
+            raise HTTPException(status_code=422,
+                detail=f"Insufficient data for {ticker}.")
 
-        # Split — use all data, predict on latest row
         X_train, X_test, y_train, y_test = time_series_split(
             X, y, test_size=0.2
         )
 
-        # Get model and explainer (cached)
         model, explainer = get_model_and_explainer()
-
-        # Predict on the most recent row
-        latest_row = X.iloc[[-1]]
-        prediction = get_prediction_explanation(
+        latest_row       = X.iloc[[-1]]
+        prediction       = get_prediction_explanation(
             model, explainer, latest_row
         )
 
         company_name = get_company_name(ticker)
 
-        return AnalysisResponse(
+        result = AnalysisResponse(
             ticker          = ticker,
             company_name    = company_name,
             date            = X.index[-1].strftime("%Y-%m-%d"),
@@ -133,10 +119,13 @@ async def analyze_ticker(ticker: str):
             error           = None
         )
 
+        # Store in cache — subsequent requests are instant
+        cache_set(cache_key, result.dict(), ttl=TTL_ANALYSIS)
+
+        return result
+
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Analysis failed for {ticker}: {str(e)}"
-        )
+        raise HTTPException(status_code=500,
+            detail=f"Analysis failed for {ticker}: {str(e)}")

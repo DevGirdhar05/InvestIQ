@@ -107,31 +107,30 @@ async def root():
     }
 
 
-@app.get("/health", response_model=HealthResponse,
-         tags=["Root"])
+@app.get("/health", response_model=HealthResponse, tags=["Root"])
 async def health_check():
-    """
-    Check that all critical components are available.
-    Returns status of database and model.
-    """
+    from src.api.cache import get_cache_stats
+
     db_status    = "ok"
     model_status = "ok"
 
-    # Check DB
     try:
         with get_connection() as conn:
             conn.execute(text("SELECT 1"))
     except Exception as e:
         db_status = f"error: {e}"
 
-    # Check model
     try:
         get_xgb_model()
     except Exception as e:
         model_status = f"error: {e}"
 
-    overall = "ok" if db_status == "ok" \
-              and model_status == "ok" else "degraded"
+    cache_stats = get_cache_stats()
+    overall     = (
+        "ok" if db_status == "ok"
+        and model_status == "ok"
+        else "degraded"
+    )
 
     return HealthResponse(
         status   = overall,

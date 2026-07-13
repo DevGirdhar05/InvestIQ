@@ -45,7 +45,7 @@ def build_dataset(
     ]
 
     X = df[feature_cols].copy()
-
+    
     # Drop last horizon rows — no future data exists for them
     X = X.iloc[:-horizon]
     y = y.iloc[:-horizon]
