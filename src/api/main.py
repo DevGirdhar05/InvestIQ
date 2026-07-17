@@ -15,7 +15,7 @@ from src.data.database import get_connection
 from sqlalchemy import text
 import pandas as pd
 from datetime import date
-
+from src.api.routes import analyze, explain, sentiment, ask, prices
 
 # ── Startup and shutdown ──────────────────────────────────────────
 @asynccontextmanager
@@ -87,7 +87,7 @@ app.include_router(analyze.router)
 app.include_router(explain.router)
 app.include_router(sentiment.router)
 app.include_router(ask.router)
-
+app.include_router(prices.router)
 
 # ── Root and health endpoints ─────────────────────────────────────
 @app.get("/", tags=["Root"])

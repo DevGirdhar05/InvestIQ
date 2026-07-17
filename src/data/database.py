@@ -264,6 +264,7 @@ def load_features(
         SELECT
             p.date,
             p.close,
+            p.volume,
             i.sma_20, i.sma_50, i.ema_20,
             i.rsi,
             i.macd, i.macd_signal, i.macd_hist,
