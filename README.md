@@ -198,7 +198,7 @@ All indicators implemented from scratch. No TA-Lib dependency.
 
 ### Requirements
 
-- Python 3.11+
+- Python 3.13+
 - PostgreSQL 15
 
 ### Setup
