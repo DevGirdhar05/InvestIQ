@@ -9,6 +9,8 @@ from src.data.database import (
 from sqlalchemy import text
 import pandas as pd
 from src.api.cache import cache_get, cache_set, TTL_ANALYSIS
+from datetime import date as date_module
+
 
 router = APIRouter(prefix="/analyze", tags=["Analysis"])
 
@@ -109,7 +111,7 @@ async def analyze_ticker(ticker: str):
         result = AnalysisResponse(
             ticker          = ticker,
             company_name    = company_name,
-            date            = X.index[-1].strftime("%Y-%m-%d"),
+            date            = date_module.today().strftime("%Y-%m-%d"),  # today not data date
             probability_up  = prediction["probability_up"],
             probability_down= prediction["probability_down"],
             confidence      = prediction["confidence"],

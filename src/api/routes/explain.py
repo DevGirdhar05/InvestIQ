@@ -5,6 +5,8 @@ from src.api.routes.analyze import (
 )
 from src.models.explainer import generate_explanation
 from src.api.cache import cache_get, cache_set, TTL_EXPLANATION
+from datetime import date as date_module
+
 
 router = APIRouter(prefix="/explain", tags=["Explanation"])
 
@@ -23,10 +25,10 @@ async def explain_ticker(ticker: str):
     try:
         analysis     = await analyze_ticker(ticker)
         company_name = get_company_name(ticker)
-        explanation  = generate_explanation(
+        explanation = generate_explanation(
             ticker       = ticker,
             company_name = company_name,
-            date         = analysis.date,
+            date         = date_module.today().strftime("%B %d, %Y"),  # always today
             prob_up      = analysis.probability_up,
             confidence   = analysis.confidence,
             top_features = [f.dict() for f in analysis.top_features],
