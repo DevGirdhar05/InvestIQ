@@ -85,3 +85,15 @@ def run_sentiment_pipeline(
         print(f"  Failed : {results['failed']}")
 
     return results
+
+if __name__ == "__main__":
+    run_sentiment_pipeline(
+        tickers=[
+            "RELIANCE.NS",
+            "TCS.NS",
+            "INFY.NS",
+            "HDFCBANK.NS",
+            "WIPRO.NS"
+        ],
+        days_back=30
+    )
