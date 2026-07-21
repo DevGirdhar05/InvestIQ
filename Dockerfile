@@ -33,14 +33,7 @@ ENV PATH=/root/.local/bin:$PATH
 # PORT 8000 is what uvicorn listens on
 EXPOSE 8000
 
-# Health check — Docker restarts the container if this fails
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
 
 # Start command
 CMD ["sh", "-c", \
-     "python scripts/init_db.py && \
-      uvicorn src.api.main:app \
-      --host 0.0.0.0 \
-      --port ${PORT:-8000} \
-      --workers 1"]
+"uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
