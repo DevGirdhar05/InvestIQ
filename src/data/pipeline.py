@@ -63,7 +63,22 @@ def run_pipeline(tickers: list = None, period: str = "2y"):
         print(f"Failed  : {results['failed']}")
 
     return results
+def run_daily_update():
+    """
+    Daily scheduled pipeline:
+    1. Update prices & indicators
+    2. Update news sentiment
+    """
+    results = run_pipeline()
 
+    from src.sentiment.pipeline import run_sentiment_pipeline
+
+    run_sentiment_pipeline(
+        tickers=WATCHLIST,
+        days_back=30
+    )
+
+    return results
 
 if __name__ == "__main__":
     run_pipeline()

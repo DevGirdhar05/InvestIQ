@@ -34,8 +34,10 @@ Thumbs.db
 # Database
 *.db
 
-# Data (if generated locally)
 data/raw/
+data/charts/
+*.csv
+
 
 # Logs
 *.log

@@ -34,7 +34,6 @@ def aggregate_daily_sentiment(
 
     return daily.round(4)
 
-
 def build_sentiment_features(
     daily_sentiment: pd.Series,
     price_index    : pd.DatetimeIndex,

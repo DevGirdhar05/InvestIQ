@@ -24,6 +24,8 @@ def fetch_stock_data(
 
     df=df[["Open","High","Low","Close","Volume"]]
 
+    df = df.dropna(subset=["Close"])
+
     df.round(2)
 
     print(f"Downloaded {len(df)} trading days")
