@@ -78,7 +78,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://investiq-pi-nine.vercel.app"
+        "https://investiq-git-main-devgirdhar05-6891s-projects.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
