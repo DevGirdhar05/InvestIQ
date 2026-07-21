@@ -76,10 +76,13 @@ RELIANCE.NS, TCS.NS, INFY.NS, HDFCBANK.NS, WIPRO.NS
 # this API. Without CORS, browsers block cross-origin requests.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins     = ["*"],   # restrict to your domain in production
-    allow_credentials = True,
-    allow_methods     = ["*"],
-    allow_headers     = ["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "https://investiq-pi-nine.vercel.app/"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ── Register routes ───────────────────────────────────────────────
