@@ -56,24 +56,8 @@ def main():
             text("SELECT COUNT(*) FROM sentiment")
         )
         sent_count = result.fetchone()[0]
-
-    if sent_count == 0:
-        print("No sentiment data — running sentiment pipeline...")
-        try:
-            from src.sentiment.pipeline import run_sentiment_pipeline
-            run_sentiment_pipeline(
-                ["RELIANCE.NS","TCS.NS","INFY.NS",
-                 "HDFCBANK.NS","WIPRO.NS"],
-                days_back=30
-            )
-            print("Sentiment pipeline complete.")
-        except Exception as e:
-            print(f"Sentiment pipeline failed (non-fatal): {e}")
-            print("Sentiment will show neutral until pipeline runs.")
-    else:
-        print(f"Sentiment has {sent_count} rows — skipping.")
-
-    print("Initialisation complete.")
+if sent_count == 0:
+    print("No sentiment data. Run the sentiment pipeline manually after deployment.")
 
     
 if __name__ == "__main__":
