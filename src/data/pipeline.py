@@ -71,12 +71,12 @@ def run_daily_update():
     """
     results = run_pipeline()
 
-    from src.sentiment.pipeline import run_sentiment_pipeline
+    # from src.sentiment.pipeline import run_sentiment_pipeline
 
-    run_sentiment_pipeline(
-        tickers=WATCHLIST,
-        days_back=30
-    )
+    # run_sentiment_pipeline(
+    #     tickers=WATCHLIST,
+    #     days_back=30
+    # )
 
     return results
 
