@@ -29,7 +29,7 @@ export const api = {
 
   // POST /ask
   ask: async (question, ticker = null) => {
-    const response = await fetch(`${BASE_URL}/ask`, {
+    const response = await fetch(`${BASE_URL}/ask/`, {
       method : "POST",
       headers: { "Content-Type": "application/json" },
       body   : JSON.stringify({ question, ticker }),
